@@ -32,17 +32,10 @@ class DaisykitHumanPoseDetector():
         # Convert poses to Python list of dict
         poses = to_py_type(poses)
 
-        # Currently we only support single human pose for pushup counter
-        # => Filter the largest object
         keypoints = []
-        max_area = -1
-        largest_pose = None
         for pose in poses:
-            area = pose["w"] * pose["h"]
-            if area > max_area:
-                max_area = area
-                largest_pose = pose
-        if largest_pose is not None:
-            keypoints = [[p["x"], p["y"], 1 if p["confidence"] >= threshold else 0] for p in pose["keypoints"]]
+        # Extract keypoints for each pose
+            kp = [[p["x"], p["y"], 1 if p["confidence"] >= threshold else 0] for p in pose["keypoints"]]
+            keypoints.append(kp)
 
         return keypoints
