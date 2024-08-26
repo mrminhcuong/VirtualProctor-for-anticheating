@@ -69,12 +69,7 @@ class Preprocessor(object):
                         except:
                             self._message.append('Skipped' + image_path + ' Invalid image')
                             continue
-                        
-                        # skip images that is not RGB
-                        if image.shape[2] != 3:
-                            self.message.append('Skipped' + image_path + ' Image is not in RGB')
-                            continue
-                        
+                                                
                         person = detector.detect(image)
                         
                         # Save landmarks if all landmarks above than the threshold
