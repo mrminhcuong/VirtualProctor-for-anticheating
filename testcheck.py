@@ -3,27 +3,36 @@ import json
 import daisykit
 from daisykit.utils import get_asset_file, to_py_type
 from daisykit import HumanPoseMoveNetFlow
- 
+from data import config, BodyPart
+from draftPoseDetection import draftposedetector
+from DaisykitHumanposeDetector import DaisykitPoseDetector
+
+#test
+detector1 = DaisykitPoseDetector(config)
+detector2 = draftposedetector(config)
+image_path = r"C:\Users\buing\Downloads\anticheating\dataset\train\sitting\sitting (202).jpg"
+img = cv2.imread(image_path)#original image is numpy array with dimension of (720, 1280, 3) 
+print(img.shape) 
+#depends on the image original size
+
+# TEST OUTPUT OF 2 FUNCTIONS RELATED TO PADDING+RESIZING
+res, pad = detector1._pad_and_resize(img) 
+print("after resizing", res.shape) #(144, 256, 3)
+print("after resize and padding", pad.shape)  #after resize and padding (256, 256, 3)
+detector1.visualize(img, debug=True )
+
+# org, resize = detector2.resize_pad(img)
+# print("after padding but not resize", org.shape)  #(1279, 1280, 3)
+# print("resize image", resize.shape) #(256, 256, 3)
 
 
- 
-config = {
-    "person_detection_model": {
-        "model": get_asset_file(r"models/human_detection/ssd_mobilenetv2/ssd_mobilenetv2.param"),
-        "weights": get_asset_file(r"models/human_detection/ssd_mobilenetv2/ssd_mobilenetv2.bin"),
-        "input_width": 320,
-        "input_height": 320,
-        "use_gpu": False
-    },
-    "human_pose_model": {
-        "model": get_asset_file(r"models/human_pose_detection/movenet/lightning.param"),
-        "weights": get_asset_file(r"models/human_pose_detection/movenet/lightning.bin"),
-        "input_width": 192,
-        "input_height": 192,
-        "use_gpu": False
-    }
-}
- 
+# keypoints1 = detector1._run_detector(img)
+# print(keypoints1.shape)
+keypoints2 = detector1.detect(img)
+# Print detected keypoints
+print("Detected keypoints:", keypoints2)
+
+
 
 
 ### video capture
