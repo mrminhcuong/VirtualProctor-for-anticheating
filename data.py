@@ -77,8 +77,8 @@ def person_from_keypoints_with_scores(
   """Creates a Person instance from single pose estimation model output.
 
   Args:
-    keypoints_with_scores: Output of the TFLite pose estimation model. A numpy
-      array with shape [17, 3]. Each row represents a keypoint: [y, x, score].
+    keypoints_with_scores: Output of the daisykit pose estimation model. A numpy
+      array with shape [17, 3]. Each row represents a keypoint: [x, y, score].
     image_height: height of the image in pixels.
     image_width: width of the image in pixels.
     keypoint_score_threshold: Only use keypoints with above this threshold to
@@ -88,8 +88,8 @@ def person_from_keypoints_with_scores(
     A Person instance.
   """
 
-  kpts_x = keypoints_with_scores[:, 1]
-  kpts_y = keypoints_with_scores[:, 0]
+  kpts_x = keypoints_with_scores[:, 0]
+  kpts_y = keypoints_with_scores[:, 1]
   scores = keypoints_with_scores[:, 2]
 
   # Convert keypoints to the input image coordinate system.
