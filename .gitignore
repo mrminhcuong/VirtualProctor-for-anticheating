@@ -3,3 +3,4 @@ dataset/
 Scripts/
 .pyenv
 Lib/
+pyvenv.config
