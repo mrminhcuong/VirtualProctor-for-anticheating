@@ -24,18 +24,24 @@ class Preprocessor(object):
             #get list of pose classes
             self._pose_class_names = sorted([n for n in os.listdir(images_in_folder)])
             self.data = pd.DataFrame()
+            
         
-        def process(self, detection_threshold=0.1):
+        def process(self, detection_threshold=0.2):
             """used for process images in the given dataset folder
             can only process picture of 1 person, pose
             get the dataframe in which each row is the keypoints of only 1 pose
             """
+            valid_extensions = ('.jpg', '.jpeg', '.png')  
             for class_index, pose_class_name in enumerate(self._pose_class_names):
                 images_in_folder = os.path.join(self._images_in_folder, pose_class_name)
                 image_names = sorted([n for n in os.listdir(images_in_folder)])
                 valid_image_count = 0
                 # Detect pose landmarks in each image
                 for image_name in tqdm.tqdm(image_names):
+                    if not image_name.lower().endswith(valid_extensions):
+                        self._message.append(f'Skipped {image_name} - Invalid file type')
+                        continue
+                    
                     image_path = os.path.join(images_in_folder, image_name)
                     try:
                         image = cv2.imread(image_path)
@@ -45,28 +51,30 @@ class Preprocessor(object):
                     person = detector_1.detect(image)   
                     if person is None:
                         self._message.append(f'Skipped {image_path} - No valid pose detected')
-                        continue                                               
+                        continue      
                     valid_image_count += 1                        
-                    
                     pose_landmarks = np.array(
                             [[keypoint.coordinate.x, keypoint.coordinate.y, keypoint.score]
                             for keypoint in person.keypoints],
-                                dtype=np.float32)
-
-                    data_row = [image_name] + pose_landmarks.tolist() + [class_index, pose_class_name]
+                                dtype=np.float32) 
+                    #person.keypoints: List(Keypoint) with each Keypoint(Bodypart,coordinate, score)
+                    #and coordinate(x:float, y:float)
+                    data_row = [image_name] + pose_landmarks.flatten().tolist() + [class_index, pose_class_name]
                     self.data = pd.concat([self.data, pd.DataFrame([data_row])], ignore_index=True)
 
             self.data.columns = ['filename'] + [f'{bp.name}_{coord}' for bp in BodyPart for coord in ['x', 'y', 'score']] + ['class_no', 'class_name']
             print(self._message)
+            return self.data
 
         def class_names(self):
             return self.pose_class_names
         
 
-images_in_folder = os.path.join('teststand', 'test')
-train_preprocessor = Preprocessor(
-    images_in_folder,
-)
-dataframe=train_preprocessor.process()   
-print("new dataframe")
-dataframe.head
+#images_in_folder = os.path.join('dataset', 'test')
+# train_preprocessor = Preprocessor(
+#     images_in_folder,
+# )
+# dataframe =train_preprocessor.process()   
+# print("new dataframe")
+# dataframe.head
+# print(dataframe)

@@ -2,23 +2,28 @@ import csv
 import pandas as pd
 from tensorflow import keras
 from sklearn.model_selection import train_test_split
-from data import BodyPart 
+from utils import BodyPart 
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 import tensorflow as tf
 import tensorflowjs as tfjs
-
+from preprocess import Preprocessor
 tfjs_model_dir = 'model'
 
+def make_df(folder, subfolder):
+    images_in_folder=os.path.join(folder, subfolder)
+    train_preprocessor = Preprocessor(
+    images_in_folder,)
+    dataframe =train_preprocessor.process()   
+    return dataframe  
 
-# loading final csv file
-def load_csv(csv_path):
-    df = pd.read_csv(csv_path)
+def load_data(df):
     df.drop(['filename'],axis=1, inplace=True)
     classes = df.pop('class_name').unique()
     y = df.pop('class_no')
-    
     X = df.astype('float64')
     y = keras.utils.to_categorical(y)
-    
     return X, y, classes
 
 
@@ -98,7 +103,7 @@ def landmarks_to_embedding(landmarks_and_scores):
     landmarks = normalize_pose_landmarks(reshaped_inputs[:, :, :2])
     # Flatten the normalized landmark coordinates into a vector
     embedding = keras.layers.Flatten()(landmarks)
-    return embedding
+    return embedding 
 
 
 def preprocess_data(X_train):
@@ -109,56 +114,58 @@ def preprocess_data(X_train):
     return tf.convert_to_tensor(processed_X_train)
 
 
-X, y, class_names = load_csv('train_data.csv')
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15)
-X_test, y_test, _ = load_csv('test_data.csv')
+
+# train= make_df("dataset", "train")
+# test= make_df("dataset", "test")
+# X, y, class_names = load_data(train)
+# X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15)
+# X_test, y_test, _ = load_data(test)
+
+# processed_X_train = preprocess_data(X_train)
+# processed_X_val =  preprocess_data(X_val)
+# processed_X_test = preprocess_data(X_test)
+
+# inputs = tf.keras.Input(shape=(34,))
+# layer = keras.layers.Dense(128, activation=tf.nn.relu6)(inputs)
+# layer = keras.layers.Dropout(0.5)(layer)
+# layer = keras.layers.Dense(64, activation=tf.nn.relu6)(layer)
+# layer = keras.layers.Dropout(0.5)(layer)
+# outputs = keras.layers.Dense(len(class_names), activation="softmax")(layer)
+
+# model = keras.Model(inputs, outputs)
 
 
-processed_X_train = preprocess_data(X_train)
-processed_X_val =  preprocess_data(X_val)
-processed_X_test = preprocess_data(X_test)
+# model.compile(
+#     optimizer='adam',
+#     loss='categorical_crossentropy',
+#     metrics=['accuracy']
+# )
 
-inputs = tf.keras.Input(shape=(34))
-layer = keras.layers.Dense(128, activation=tf.nn.relu6)(inputs)
-layer = keras.layers.Dropout(0.5)(layer)
-layer = keras.layers.Dense(64, activation=tf.nn.relu6)(layer)
-layer = keras.layers.Dropout(0.5)(layer)
-outputs = keras.layers.Dense(len(class_names), activation="softmax")(layer)
+# # Add a checkpoint callback to store the checkpoint that has the highest
+# # validation accuracy.
+# checkpoint_path = "weights.best.keras"
+# checkpoint = keras.callbacks.ModelCheckpoint(checkpoint_path,
+#                              monitor='val_accuracy',
+#                              verbose=1,
+#                              save_best_only=True,
+#                              mode='max')
+# earlystopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', 
+#                                               patience=20)
 
-model = keras.Model(inputs, outputs)
-
-
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
-
-# Add a checkpoint callback to store the checkpoint that has the highest
-# validation accuracy.
-checkpoint_path = "weights.best.hdf5"
-checkpoint = keras.callbacks.ModelCheckpoint(checkpoint_path,
-                             monitor='val_accuracy',
-                             verbose=1,
-                             save_best_only=True,
-                             mode='max')
-earlystopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', 
-                                              patience=20)
-
-# Start training
-print('--------------TRAINING----------------')
-history = model.fit(processed_X_train, y_train,
-                    epochs=200,
-                    batch_size=16,
-                    validation_data=(processed_X_val, y_val),
-                    callbacks=[checkpoint, earlystopping])
+# # Start training
+# print('--------------TRAINING----------------')
+# history = model.fit(processed_X_train, y_train,
+#                     epochs=200,
+#                     batch_size=16,
+#                     validation_data=(processed_X_val, y_val),
+#                     callbacks=[checkpoint, earlystopping])
 
 
-print('-----------------EVAUATION----------------')
-loss, accuracy = model.evaluate(processed_X_test, y_test)
-print('LOSS: ', loss)
-print("ACCURACY: ", accuracy)
+# print('-----------------EVALUATION----------------')
+# loss, accuracy = model.evaluate(processed_X_test, y_test)
+# print('LOSS: ', loss)
+# print("ACCURACY: ", accuracy)
 
 
-tfjs.converters.save_keras_model(model, tfjs_model_dir)
-print('tfjs model saved at ',tfjs_model_dir)
+# tfjs.converters.save_keras_model(model, tfjs_model_dir)
+# print('tfjs model saved at ',tfjs_model_dir)

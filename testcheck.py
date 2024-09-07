@@ -3,22 +3,7 @@ import json
 import daisykit
 from daisykit.utils import get_asset_file, to_py_type
 from daisykit import HumanPoseMoveNetFlow
-from data import config, BodyPart
-from draftPoseDetection import draftposedetector
-from DaisykitHumanposeDetector import DaisykitPoseDetector
-
-#test
-detector1 = DaisykitPoseDetector(config)
-detector2 = draftposedetector(config)
-image_path = r"C:\Users\buing\Downloads\anticheating\dataset\train\cheating\cheating (418).jpg"
-img = cv2.imread(image_path)#original image is numpy array with dimension of (720, 1280, 3) 
-print(img.shape) 
-
-# org, resize = detector2.resize_pad(img)
-# print("after padding but not resize", org.shape)  #(1279, 1280, 3)
-# print("resize image", resize.shape) #(256, 256, 3)
-# detector2.visualize2(resize, debug=True ) 
-
+from utils import config
 
 ### video capture
 human_pose_flow = HumanPoseMoveNetFlow(json.dumps(config))
