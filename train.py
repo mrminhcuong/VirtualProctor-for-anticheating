@@ -4,6 +4,7 @@ from tensorflow import keras
 from sklearn.model_selection import train_test_split
 from utils import BodyPart 
 import os
+import numpy
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 import tensorflow as tf
@@ -43,32 +44,31 @@ def get_pose_size(landmarks, torso_size_multiplier=2.5):
     * Maximum distance from pose center to any pose landmark
     """
     # Hips center
-    hips_center = get_center_point(landmarks, BodyPart.LEFT_HIP, 
-                                 BodyPart.RIGHT_HIP)
+    # hips_center = get_center_point(landmarks, BodyPart.LEFT_HIP, 
+    #                              BodyPart.RIGHT_HIP)
 
     # Shoulders center
     shoulders_center = get_center_point(landmarks, BodyPart.LEFT_SHOULDER,
                                       BodyPart.RIGHT_SHOULDER)
 
     # Torso size as the minimum body size
-    torso_size = tf.linalg.norm(shoulders_center - hips_center)
+    # torso_size = tf.linalg.norm(shoulders_center - hips_center)
     # Pose center
-    pose_center_new = get_center_point(landmarks, BodyPart.LEFT_HIP, 
-                                     BodyPart.RIGHT_HIP)
-    pose_center_new = tf.expand_dims(pose_center_new, axis=1)
+    pose_center= shoulders_center
+    pose_center = tf.expand_dims(pose_center, axis=1)
     # Broadcast the pose center to the same size as the landmark vector to
     # perform substraction
-    pose_center_new = tf.broadcast_to(pose_center_new,
+    pose_center = tf.broadcast_to(pose_center,
                                     [tf.size(landmarks) // (17*2), 17, 2])
 
     # Dist to pose center
-    d = tf.gather(landmarks - pose_center_new, 0, axis=0,
+    d = tf.gather(landmarks - pose_center, 0, axis=0,
                 name="dist_to_pose_center")
     # Max dist to pose center
     max_dist = tf.reduce_max(tf.linalg.norm(d, axis=0))
-
+    pose_size= max_dist
     # Normalize scale
-    pose_size = tf.maximum(torso_size * torso_size_multiplier, max_dist)
+    # pose_size = tf.maximum(torso_size * torso_size_multiplier, max_dist)
     return pose_size
 
 
@@ -78,8 +78,8 @@ def normalize_pose_landmarks(landmarks):
     scaling it to a constant pose size.
   """
   # Move landmarks so that the pose center becomes (0,0)
-    pose_center = get_center_point(landmarks, BodyPart.LEFT_HIP, 
-                                 BodyPart.RIGHT_HIP)
+    pose_center = get_center_point(landmarks, BodyPart. LEFT_SHOULDER, 
+                                 BodyPart.RIGHT_SHOULDER)
 
     pose_center = tf.expand_dims(pose_center, axis=1)
     # Broadcast the pose center to the same size as the landmark vector to perform
@@ -93,6 +93,31 @@ def normalize_pose_landmarks(landmarks):
     landmarks /= pose_size
     return landmarks
 
+import numpy as np
+
+def calculate_angle(pointA, pointB, pointC):
+    """Calculates the angle ABC (in degrees) where B is the vertex."""
+    # Convert tensors to numpy arrays if necessary
+    A = pointA.numpy() if isinstance(pointA, tf.Tensor) else pointA
+    B = pointB.numpy() if isinstance(pointB, tf.Tensor) else pointB
+    C = pointC.numpy() if isinstance(pointC, tf.Tensor) else pointC
+
+    #print("a,b,c are", A,B,C, type(A), type(B), A.shape, C.shape)
+    A = A.flatten()
+    B = B.flatten()
+    C = C.flatten()
+    
+    # Vectors BA and BC
+    BA = A - B
+    BC = C - B
+
+    # Calculate the cosine of the angle using the dot product and magnitudes
+    cosine_angle = np.dot(BA, BC) / (np.linalg.norm(BA) * np.linalg.norm(BC))
+    # Clip values to avoid numerical errors outside [-1, 1]
+    cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
+    # Convert to angle in degrees
+    angle = np.degrees(np.arccos(cosine_angle))
+    return angle
 
 def landmarks_to_embedding(landmarks_and_scores):
     """Converts the input landmarks into a pose embedding."""
@@ -103,6 +128,30 @@ def landmarks_to_embedding(landmarks_and_scores):
     landmarks = normalize_pose_landmarks(reshaped_inputs[:, :, :2])
     # Flatten the normalized landmark coordinates into a vector
     embedding = keras.layers.Flatten()(landmarks)
+    
+    # # Extract specific points for angle calculations
+    # left_shoulder = landmarks[:, BodyPart.LEFT_SHOULDER.value, :]
+    # right_shoulder = landmarks[:, BodyPart.RIGHT_SHOULDER.value, :]
+    # left_elbow = landmarks[:, BodyPart.LEFT_ELBOW.value, :]
+    # right_elbow = landmarks[:, BodyPart.RIGHT_ELBOW.value, :]
+    # left_wrist = landmarks[:, BodyPart.LEFT_WRIST.value, :]
+    # right_wrist = landmarks[:, BodyPart.RIGHT_WRIST.value, :]
+    # nose = landmarks[:, BodyPart.NOSE.value, :]
+
+    # # Calculate angles
+    # angles = [
+    #     calculate_angle(left_shoulder, left_elbow, left_wrist),
+    #     calculate_angle(right_shoulder, right_elbow, right_wrist),
+    #     calculate_angle(nose, right_shoulder, right_wrist),
+    #     calculate_angle(nose, left_shoulder, left_wrist),
+    #     calculate_angle( right_elbow, nose, left_elbow),
+    #     calculate_angle( right_wrist, nose, left_wrist),
+    # ]
+
+    # # Add angles to embedding
+    # angles_tensor = tf.convert_to_tensor(angles, dtype=tf.float32)
+    # angles_tensor = tf.reshape(angles_tensor, (1, -1))
+    # embedding = tf.concat([embedding, angles_tensor], axis=1)
     return embedding 
 
 
@@ -111,61 +160,64 @@ def preprocess_data(X_train):
     for i in range(X_train.shape[0]):
         embedding = landmarks_to_embedding(tf.reshape(tf.convert_to_tensor(X_train.iloc[i]), (1, 51)))
         processed_X_train.append(tf.reshape(embedding, (34)))
-    return tf.convert_to_tensor(processed_X_train)
+    return tf.convert_to_tensor(processed_X_train) 
 
 
 
-# train= make_df("dataset", "train")
-# test= make_df("dataset", "test")
-# X, y, class_names = load_data(train)
-# X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15)
-# X_test, y_test, _ = load_data(test)
-
-# processed_X_train = preprocess_data(X_train)
-# processed_X_val =  preprocess_data(X_val)
-# processed_X_test = preprocess_data(X_test)
-
-# inputs = tf.keras.Input(shape=(34,))
-# layer = keras.layers.Dense(128, activation=tf.nn.relu6)(inputs)
-# layer = keras.layers.Dropout(0.5)(layer)
-# layer = keras.layers.Dense(64, activation=tf.nn.relu6)(layer)
-# layer = keras.layers.Dropout(0.5)(layer)
-# outputs = keras.layers.Dense(len(class_names), activation="softmax")(layer)
-
-# model = keras.Model(inputs, outputs)
+train= make_df("dataset", "train")
+X, y, class_names = load_data(train)
+X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+# Second split: validation and test sets
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
 
-# model.compile(
-#     optimizer='adam',
-#     loss='categorical_crossentropy',
-#     metrics=['accuracy']
-# )
+processed_X_train = preprocess_data(X_train)
+processed_X_val =  preprocess_data(X_val)
+processed_X_test = preprocess_data(X_test)
+print("process x train", processed_X_train)
+print("process x test", processed_X_test)
 
-# # Add a checkpoint callback to store the checkpoint that has the highest
-# # validation accuracy.
-# checkpoint_path = "weights.best.keras"
-# checkpoint = keras.callbacks.ModelCheckpoint(checkpoint_path,
-#                              monitor='val_accuracy',
-#                              verbose=1,
-#                              save_best_only=True,
-#                              mode='max')
-# earlystopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', 
-#                                               patience=20)
+inputs = tf.keras.Input(shape=(34,))
+layer = keras.layers.Dense(128, activation=tf.nn.relu6)(inputs)
+layer = keras.layers.Dropout(0.5)(layer)
+layer = keras.layers.Dense(64, activation=tf.nn.relu6)(layer)
+layer = keras.layers.Dropout(0.5)(layer)
+outputs = keras.layers.Dense(len(class_names), activation="softmax")(layer)
 
-# # Start training
-# print('--------------TRAINING----------------')
-# history = model.fit(processed_X_train, y_train,
-#                     epochs=200,
-#                     batch_size=16,
-#                     validation_data=(processed_X_val, y_val),
-#                     callbacks=[checkpoint, earlystopping])
+model = keras.Model(inputs, outputs)
 
 
-# print('-----------------EVALUATION----------------')
-# loss, accuracy = model.evaluate(processed_X_test, y_test)
-# print('LOSS: ', loss)
-# print("ACCURACY: ", accuracy)
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Add a checkpoint callback to store the checkpoint that has the highest
+# validation accuracy.
+checkpoint_path = "weights.best.keras"
+checkpoint = keras.callbacks.ModelCheckpoint(checkpoint_path,
+                             monitor='val_accuracy',
+                             verbose=1,
+                             save_best_only=True,
+                             mode='max')
+earlystopping = keras.callbacks.EarlyStopping(monitor='val_accuracy', 
+                                              patience=20)
+
+# Start training
+print('--------------TRAINING----------------')
+history = model.fit(processed_X_train, y_train,
+                    epochs=200,
+                    batch_size=16,
+                    validation_data=(processed_X_val, y_val),
+                    callbacks=[checkpoint, earlystopping])
 
 
-# tfjs.converters.save_keras_model(model, tfjs_model_dir)
-# print('tfjs model saved at ',tfjs_model_dir)
+print('-----------------EVALUATION----------------')
+loss, accuracy = model.evaluate(processed_X_test, y_test)
+print('LOSS: ', loss)
+print("ACCURACY: ", accuracy)
+
+
+tfjs.converters.save_keras_model(model, tfjs_model_dir)
+print('tfjs model saved at ',tfjs_model_dir)
