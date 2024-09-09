@@ -41,9 +41,17 @@ class CheatDetection:
             processed_embedding=tf.convert_to_tensor(embedding)
             # Predict cheating behavior
             prediction = self.model.predict(processed_embedding)
+            prediction = np.squeeze(prediction,0)
+            if prediction[0] == np.max(prediction):
+                if prediction[0] >= 10000*prediction[1]:
+                    predicted_class = 0
+                else:
+                    predicted_class = 1
+            else:
+                predicted_class = 2
 
             # If classified as cheating, draw bounding box
-            if prediction == 0:  
+            if predicted_class == 0:  
                 cheating_detected = True
                 start_point = (int(person.bounding_box.start_point.x), int(person.bounding_box.start_point.y))
                 end_point = (int(person.bounding_box.end_point.x), int(person.bounding_box.end_point.y))
@@ -52,29 +60,4 @@ class CheatDetection:
         return image, cheating_detected
 
 
-# def live_video_detection(config, model_path):
-#     cheat_detector = CheatDetection(config, model_path)
 
-#     # Start video capture
-#     cap = cv2.VideoCapture(0)
-    
-#     while cap.isOpened():
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-
-#         # Detect cheating in the current frame
-#         output_frame, cheating_detected = cheat_detector.detect_cheating(frame)
-
-#         # Display the frame
-#         cv2.imshow('Cheat Detection', output_frame)
-
-#         # Exit on pressing 'q'
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-
-#     cap.release()
-#     cv2.destroyAllWindows()
-
-
-# live_video_detection(config, model_path)

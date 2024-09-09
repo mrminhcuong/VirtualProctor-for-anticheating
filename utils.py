@@ -88,9 +88,9 @@ def person_from_keypoints_with_scores(
 
   # Calculate bounding box 
   start_point = Point(
-      int(np.amin(kpts_x) * image_width), int(np.amin(kpts_y) * image_height))
+      int(np.amin(kpts_x) ), int(np.amin(kpts_y)))
   end_point = Point(
-      int(np.amax(kpts_x) * image_width), int(np.amax(kpts_y) * image_height))
+      int(np.amax(kpts_x)), int(np.amax(kpts_y)))
   bounding_box = Rectangle(start_point, end_point)
 
   # Calculate person score by averaging keypoint scores.
