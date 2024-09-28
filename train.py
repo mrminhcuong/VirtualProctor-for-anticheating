@@ -126,30 +126,6 @@ def landmarks_to_embedding(landmarks_and_scores):
     landmarks = normalize_pose_landmarks(reshaped_inputs[:, :, :2])
     # Flatten the normalized landmark coordinates into a vector
     embedding = keras.layers.Flatten()(landmarks)
-    
-    # # Extract specific points for angle calculations
-    # left_shoulder = landmarks[:, BodyPart.LEFT_SHOULDER.value, :]
-    # right_shoulder = landmarks[:, BodyPart.RIGHT_SHOULDER.value, :]
-    # left_elbow = landmarks[:, BodyPart.LEFT_ELBOW.value, :]
-    # right_elbow = landmarks[:, BodyPart.RIGHT_ELBOW.value, :]
-    # left_wrist = landmarks[:, BodyPart.LEFT_WRIST.value, :]
-    # right_wrist = landmarks[:, BodyPart.RIGHT_WRIST.value, :]
-    # nose = landmarks[:, BodyPart.NOSE.value, :]
-
-    # # Calculate angles
-    # angles = [
-    #     calculate_angle(left_shoulder, left_elbow, left_wrist),
-    #     calculate_angle(right_shoulder, right_elbow, right_wrist),
-    #     calculate_angle(nose, right_shoulder, right_wrist),
-    #     calculate_angle(nose, left_shoulder, left_wrist),
-    #     calculate_angle( right_elbow, nose, left_elbow),
-    #     calculate_angle( right_wrist, nose, left_wrist),
-    # ]
-
-    # # Add angles to embedding
-    # angles_tensor = tf.convert_to_tensor(angles, dtype=tf.float32)
-    # angles_tensor = tf.reshape(angles_tensor, (1, -1))
-    # embedding = tf.concat([embedding, angles_tensor], axis=1)
     return embedding 
 
 
@@ -161,3 +137,45 @@ def preprocess_data(X_train):
     return tf.convert_to_tensor(processed_X_train) 
 
 
+def landmarks_to_embedding_angles(landmarks_and_scores):
+    """Converts the input landmarks into a pose embedding."""
+    # Reshape the flat input into a matrix with shape=(17, 3)
+    reshaped_inputs = keras.layers.Reshape((17, 3))(landmarks_and_scores)
+
+    # Normalize landmarks 2D
+    landmarks = normalize_pose_landmarks(reshaped_inputs[:, :, :2])
+    # Flatten the normalized landmark coordinates into a vector
+    embedding = keras.layers.Flatten()(landmarks)
+    
+    # Extract specific points for angle calculations
+    left_shoulder = landmarks[:, BodyPart.LEFT_SHOULDER.value, :]
+    right_shoulder = landmarks[:, BodyPart.RIGHT_SHOULDER.value, :]
+    left_elbow = landmarks[:, BodyPart.LEFT_ELBOW.value, :]
+    right_elbow = landmarks[:, BodyPart.RIGHT_ELBOW.value, :]
+    left_wrist = landmarks[:, BodyPart.LEFT_WRIST.value, :]
+    right_wrist = landmarks[:, BodyPart.RIGHT_WRIST.value, :]
+    nose = landmarks[:, BodyPart.NOSE.value, :]
+
+    # Calculate angles
+    angles = [
+        calculate_angle(left_shoulder, left_elbow, left_wrist),
+        calculate_angle(right_shoulder, right_elbow, right_wrist),
+        calculate_angle(nose, right_shoulder, right_wrist),
+        calculate_angle(nose, left_shoulder, left_wrist),
+        calculate_angle( right_elbow, nose, left_elbow),
+        calculate_angle( right_wrist, nose, left_wrist),
+    ]
+
+    # Add angles to embedding
+    angles_tensor = tf.convert_to_tensor(angles, dtype=tf.float32)
+    angles_tensor = tf.reshape(angles_tensor, (1, -1))
+    embedding = tf.concat([embedding, angles_tensor], axis=1)
+    return embedding 
+
+
+def preprocess_data_with_angles(X_train):
+    processed_X_train = []
+    for i in range(X_train.shape[0]):
+        embedding = landmarks_to_embedding_angles(tf.reshape(tf.convert_to_tensor(X_train.iloc[i]), (1, 51)))
+        processed_X_train.append(tf.reshape(embedding, (40)))
+    return tf.convert_to_tensor(processed_X_train) 
