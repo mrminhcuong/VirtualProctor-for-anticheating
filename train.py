@@ -9,7 +9,6 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 import tensorflow as tf
 from preprocess import Preprocessor
-tfjs_model_dir = 'model'
 
 def make_df(folder, subfolder):
     images_in_folder=os.path.join(folder, subfolder)

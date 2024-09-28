@@ -40,7 +40,7 @@ class CheatDetection:
             embedding = landmarks_to_embedding(tf.reshape(tf.convert_to_tensor(keypoints_dataframe), (1, 51)))
             processed_embedding=tf.convert_to_tensor(embedding)
             # Predict cheating behavior
-            prediction = self.model.predict(processed_embedding)
+            prediction = self.model.predict(processed_embedding, verbose=2 )
             prediction = np.squeeze(prediction,0)
             if prediction[0] == np.max(prediction):
                 if prediction[0] >= 10000*prediction[1]:
