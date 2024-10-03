@@ -177,5 +177,5 @@ def preprocess_data_with_angles(X_train):
     processed_X_train = []
     for i in range(X_train.shape[0]):
         embedding = landmarks_to_embedding_angles(tf.reshape(tf.convert_to_tensor(X_train.iloc[i]), (1, 51)))
-        processed_X_train.append(tf.reshape(embedding, (40)))
+        processed_X_train.append(tf.reshape(embedding, (46)))
     return tf.convert_to_tensor(processed_X_train) 

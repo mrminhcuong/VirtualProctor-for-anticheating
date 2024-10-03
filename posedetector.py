@@ -17,7 +17,7 @@ class posedetector:
         self.human_pose_flow = HumanPoseMoveNetFlow(json.dumps(config))
         self.many_pose = many_pose
 
-    def detect(self, image: np.ndarray) -> Person:
+    def detect(self, image: np.ndarray, threshold=0.2) -> Person:
         """Runs model inference on the image.
         args: numpy array of image
         output: 
@@ -37,7 +37,7 @@ class posedetector:
         keypoints = []
         for pose in poses_dict:
             # Extract keypoints for each pose
-            kp = [[p["x"], p["y"], p["confidence"]] for p in pose["keypoints"]]
+            kp = [[p["x"], p["y"], 1 if p["confidence"] >= threshold else 0] for p in pose["keypoints"]]
             keypoints.append(kp)
 
         keypoints_array = np.array(keypoints)
